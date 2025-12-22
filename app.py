@@ -77,7 +77,7 @@ def admin_dialog():
             st.rerun()
 
 # ==========================================
-# 3. AI 퀴즈 생성 함수 (여기가 수정됨!)
+# 3. AI 퀴즈 생성 함수 (O/X 로직 수정됨!)
 # ==========================================
 def make_quiz(level, category, q_type):
     category_instruction = ""
@@ -86,9 +86,13 @@ def make_quiz(level, category, q_type):
     elif category == "어휘":
         category_instruction = "문맥에 맞는 단어 선택, 유의어, 반의어 등 어휘의 의미를 묻는 문제 위주로 출제하세요."
 
+    # ★★★ 수정된 부분: O/X와 4지선다의 JSON 형식을 분리함 ★★★
     json_structure = ""
-    if q_type in ["4지선다", "O/X"]:
+    if q_type == "4지선다":
         json_structure = """{"question": "지문", "options": ["보기1", "보기2", "보기3", "보기4"], "answer": "정답", "explanation": "해설"}"""
+    elif q_type == "O/X":
+        # O/X는 보기를 명시적으로 지정
+        json_structure = """{"question": "맞으면 O, 틀리면 X를 선택하세요.", "options": ["O", "X"], "answer": "O 또는 X", "explanation": "해설"}"""
     elif q_type == "단답형":
         json_structure = """{"question": "지문", "answer": "정답단어", "explanation": "해설"}"""
     elif q_type == "연결하기":
@@ -110,16 +114,15 @@ def make_quiz(level, category, q_type):
         )
         data = json.loads(response.text)
         
-        # ★★★ [수정 포인트] 데이터가 리스트([])로 왔을 경우 처리 ★★★
+        # 리스트 처리
         if isinstance(data, list):
-            # 리스트라면 첫 번째 문제만 가져옴
-            if len(data) > 0:
-                data = data[0]
-            else:
-                return None
+            data = data[0] if len(data) > 0 else None
                 
-        # 데이터가 딕셔너리인지 한 번 더 확인
+        # 딕셔너리 확인 및 데이터 보정
         if isinstance(data, dict):
+            # ★★★ 강제 보정: O/X 문제라면 보기는 무조건 ["O", "X"]로 고정 ★★★
+            if q_type == "O/X":
+                data['options'] = ["O", "X"]
             return data
         else:
             return None
@@ -140,7 +143,7 @@ with col_lock:
 
 st.caption("등급과 유형을 선택하고 AI와 함께 한국어를 연습해보세요!")
 
-# 퀴즈 기능 꺼짐 + 관리자 아님 -> 안내 메시지
+# 퀴즈 기능 꺼짐 + 관리자 아님
 if not st.session_state['quiz_active'] and not st.session_state['is_admin']:
     st.warning("⛔ 현재 선생님이 퀴즈 생성 기능을 잠시 꺼두셨습니다.")
     st.info("수업 시간에 다시 만나요!")
@@ -173,7 +176,6 @@ else:
                 time.sleep(0.5)
                 quiz_data = make_quiz(s_level, s_category, s_type)
                 
-                # 데이터 유효성 검사 (question 키가 있는지 확인)
                 if quiz_data and 'question' in quiz_data:
                     st.session_state['quiz'] = quiz_data
                     st.session_state['q_type'] = s_type
@@ -190,12 +192,11 @@ else:
                     status.update(label="생성 실패", state="error")
                     st.error("데이터 형식이 올바르지 않습니다. 다시 시도해주세요.")
 
-    # 문제 화면 표시 (quiz 데이터가 있고, 딕셔너리 형태일 때만)
+    # 문제 화면 표시
     if 'quiz' in st.session_state and st.session_state['quiz']:
         q_data = st.session_state['quiz']
         q_type = st.session_state['q_type']
         
-        # ★★★ [수정 포인트] 에러 방지를 위한 이중 체크 ★★★
         if isinstance(q_data, dict) and 'question' in q_data:
             
             st.divider()
@@ -260,12 +261,14 @@ else:
                                 st.write(f"🔹 **{item}** ➡ {match}")
                         st.info(f"💡 해설: {q_data.get('explanation', '')}")
 
-            # [유형 B] 나머지 문제
+            # [유형 B] 나머지 문제 (4지선다, OX, 단답형)
             else:
                 with st.form("quiz_form"):
                     user_input = None
                     if q_type in ["4지선다", "O/X"]:
-                        user_input = st.radio("정답을 선택하세요:", q_data.get('options', []))
+                        # 옵션이 없을 경우를 대비해 빈 리스트 처리
+                        options = q_data.get('options', [])
+                        user_input = st.radio("정답을 선택하세요:", options)
                     elif q_type == "단답형":
                         user_input = st.text_input("정답을 입력하세요:")
                     
@@ -290,9 +293,7 @@ else:
                             st.error(f"아쉽네요. 정답은 '{answer}' 입니다.")
                         st.info(f"💡 해설: {q_data.get('explanation', '')}")
         else:
-            # 데이터가 이상하게 들어왔을 경우
             st.error("문제를 불러오는 중 오류가 발생했습니다. '새 문제 만들기'를 다시 눌러주세요.")
 
     elif 'quiz' not in st.session_state or st.session_state['quiz'] is None:
         st.info("👈 왼쪽에서 [새 문제 만들기]를 눌러 시작하세요.")
-
