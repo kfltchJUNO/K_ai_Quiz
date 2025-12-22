@@ -1,22 +1,23 @@
 import streamlit as st
 import google.generativeai as genai
 import json
-import time # 시간 지연 효과를 위해 추가
+import time
 
 # ==========================================
 # 1. 설정 영역
 # ==========================================
 
-# 실제 키는 지우고, 서버의 비밀 금고(secrets)에서 꺼내 쓰도록 변경
-# 로컬에서 실행할 때 에러가 나면, 일단 주석 처리하거나 배포 후에 테스트하세요.
+# 배포된 환경(Secrets)인지 로컬 환경인지 확인하여 키 설정
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
-    # 로컬 테스트용 (배포할 땐 이 줄을 지우거나 비워두는 게 안전함)
-    api_key = "AIzaSyAQCS9T4tnFgvQUOmJUBjDTnf0MKnfajsk" 
+    # 로컬에서 테스트할 때만 쓰는 키 (배포할 땐 비워두셔도 됩니다)
+    api_key = "여기에_API_KEY_를_넣으세요" 
 
-genai.configure(api_key=api_key)try:
-    genai.configure(api_key=API_KEY)
+# 구글 제미나이 설정
+genai.configure(api_key=api_key)
+
+try:
     model = genai.GenerativeModel('gemini-flash-latest')
 except Exception as e:
     st.error(f"API 키 설정에 문제가 있습니다: {e}")
@@ -112,4 +113,5 @@ if 'quiz' in st.session_state and st.session_state['quiz']:
 
 # 처음에 아무것도 없을 때 안내 문구
 elif 'quiz' not in st.session_state or st.session_state['quiz'] is None:
+
     st.info("👈 왼쪽에서 '새 문제 만들기' 버튼을 눌러주세요.")
