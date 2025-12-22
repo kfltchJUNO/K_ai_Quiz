@@ -2,6 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 import json
 import time
+import random
 
 # ==========================================
 # 1. 설정 영역
@@ -236,3 +237,4 @@ if 'quiz' in st.session_state and st.session_state['quiz']:
 
 elif 'quiz' not in st.session_state or st.session_state['quiz'] is None:
     st.info("👈 왼쪽 사이드바에서 설정을 마치고 [새 문제 만들기]를 눌러주세요.")
+
