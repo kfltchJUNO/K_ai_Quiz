@@ -2,33 +2,39 @@ import streamlit as st
 import google.generativeai as genai
 import json
 import time
-import random
+import random  # ★ 이 친구가 없어서 에러가 났었습니다!
 
 # ==========================================
 # 1. 설정 영역
 # ==========================================
 
-# 배포된 환경(Secrets)인지 로컬 환경인지 확인하여 키 설정
+# 배포 환경(Secrets)과 로컬 환경 모두 작동하도록 설정
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
-    # 로컬에서 테스트할 때만 쓰는 키 (배포할 땐 비워두셔도 됩니다)
-    api_key = "여기에_API_KEY_를_넣으세요" 
+    # 로컬 테스트 시 여기에 키 입력 (따옴표 안에 넣어주세요)
+    api_key = "여기에_API_KEY_를_넣으세요"
 
-# 구글 제미나이 설정
 genai.configure(api_key=api_key)
 
 try:
     model = genai.GenerativeModel('gemini-flash-latest')
 except Exception as e:
-    st.error(f"API 키 설정에 문제가 있습니다: {e}")
+    st.error(f"API 키 설정 오류: {e}")
 
 # ==========================================
 # 2. 기능 구현 (AI 프롬프트 엔지니어링)
 # ==========================================
 def make_quiz(level, category, q_type):
     
-    # 유형별로 AI에게 요청할 데이터 포맷을 다르게 지정
+    # 1) 영역(어휘/문법)에 따른 AI 지침 강화
+    category_instruction = ""
+    if category == "문법":
+        category_instruction = "단어의 뜻을 묻지 말고, 조사(은/는/이/가), 어미(-는데/-어서), 연결어미, 동사 활용 등 문법적 요소를 정확하게 사용하는지에 집중해서 출제하세요."
+    elif category == "어휘":
+        category_instruction = "문법보다는 단어의 의미, 유의어, 반의어, 문맥에 맞는 단어 선택에 집중해서 출제하세요."
+
+    # 2) 문제 유형에 따른 JSON 포맷 설정
     json_format = ""
     if q_type in ["4지선다", "O/X"]:
         json_format = """
@@ -63,8 +69,9 @@ def make_quiz(level, category, q_type):
     prompt = f"""
     당신은 한국어 교육 전문가입니다. 외국인 학습자를 위한 문제를 출제해주세요.
     
+    [출제 조건]
     1. 대상 등급: 한국어표준교육과정 {level}
-    2. 학습 영역: {category} (문법 또는 어휘 위주)
+    2. 학습 영역: {category} ({category_instruction})
     3. 문제 유형: {q_type}
     
     [출력 조건]
@@ -109,9 +116,8 @@ with st.sidebar:
     if st.button("새 문제 만들기", type="primary", use_container_width=True):
         st.session_state['quiz'] = None
         st.session_state['solved'] = False
-        st.session_state['user_answer'] = None # 사용자 답 초기화
+        st.session_state['shuffled_options'] = None # 보기 섞기 초기화
         
-        # ★ 요청하신 대로 로딩 멘트 변경 ★
         with st.status("문제 생성기가 문제를 만드는 중입니다...", expanded=True) as status:
             st.write(f"📊 난이도: {s_level}")
             st.write(f"📚 영역: {s_category} / {s_type}")
@@ -121,11 +127,11 @@ with st.sidebar:
             
             if quiz_data:
                 st.session_state['quiz'] = quiz_data
-                st.session_state['q_type'] = s_type # 현재 문제 유형 저장
+                st.session_state['q_type'] = s_type 
                 status.update(label="출제 완료!", state="complete", expanded=False)
             else:
                 status.update(label="생성 실패", state="error")
-                st.error("다시 시도해주세요.")
+                st.error("문제를 생성하지 못했습니다. 다시 시도해주세요.")
 
 # --- 문제 풀기 화면 ---
 if 'quiz' in st.session_state and st.session_state['quiz']:
@@ -158,39 +164,41 @@ if 'quiz' in st.session_state and st.session_state['quiz']:
             st.write("왼쪽 단어에 맞는 뜻을 오른쪽에서 골라주세요.")
             
             # 짝 데이터 가져오기
-            pairs = q_data['pairs']
+            pairs = q_data.get('pairs', [])
             
-            # 오른쪽 보기(뜻) 리스트 만들기 (섞기 전 원본)
-            correct_matches = [p['match'] for p in pairs]
-            
-            # 세션 스테이트에 섞인 보기가 없으면 생성 (새로고침 시 유지 위해)
-            if 'shuffled_options' not in st.session_state or st.session_state['quiz'] != q_data:
-                shuffled = correct_matches.copy()
-                random.shuffle(shuffled)
-                st.session_state['shuffled_options'] = shuffled
-            
-            options_display = ["선택하세요"] + st.session_state['shuffled_options']
-            
-            # 사용자 선택 저장할 딕셔너리
-            user_selections = {}
-            
-            for p in pairs:
-                col_a, col_b = st.columns([1, 2])
-                with col_a:
-                    st.markdown(f"**{p['item']}**") # 왼쪽 단어
-                with col_b:
-                    # 각 단어마다 selectbox 생성
-                    choice = st.selectbox(
-                        f"{p['item']}의 뜻", 
-                        options_display, 
-                        key=f"match_{p['item']}", 
-                        label_visibility="collapsed"
-                    )
-                    user_selections[p['item']] = choice
-            
-            user_input = user_selections # 전체 선택 결과를 정답 체크용으로 넘김
+            if pairs:
+                # 오른쪽 보기(뜻) 리스트 만들기 (섞기 전 원본)
+                correct_matches = [p['match'] for p in pairs]
+                
+                # 세션 스테이트에 섞인 보기가 없으면 생성 (새로고침 시 유지 위해)
+                if st.session_state.get('shuffled_options') is None:
+                    shuffled = correct_matches.copy()
+                    random.shuffle(shuffled) # ★ 여기서 random 모듈이 필요합니다!
+                    st.session_state['shuffled_options'] = shuffled
+                
+                options_display = ["선택하세요"] + st.session_state['shuffled_options']
+                
+                # 사용자 선택 저장할 딕셔너리
+                user_selections = {}
+                
+                for p in pairs:
+                    col_a, col_b = st.columns([1, 2])
+                    with col_a:
+                        st.markdown(f"**{p['item']}**") 
+                    with col_b:
+                        choice = st.selectbox(
+                            f"뜻 선택 ({p['item']})", 
+                            options_display, 
+                            key=f"match_{p['item']}", 
+                            label_visibility="collapsed"
+                        )
+                        user_selections[p['item']] = choice
+                
+                user_input = user_selections
+            else:
+                st.error("데이터 형식이 올바르지 않습니다.")
 
-        # 제출 버튼
+        # 제출 버튼 (폼 안에 있어야 함)
         submitted = st.form_submit_button("정답 확인", use_container_width=True)
         
         if submitted:
@@ -202,28 +210,29 @@ if 'quiz' in st.session_state and st.session_state['quiz']:
                     is_correct = True
                     
             elif q_type == "단답형":
-                # 공백 제거 후 비교
-                if user_input.strip() == q_data['answer'].strip():
+                if str(user_input).strip() == str(q_data['answer']).strip():
                     is_correct = True
                     
             elif q_type == "연결하기":
-                # 모든 짝이 맞는지 확인
                 all_match = True
-                for p in q_data['pairs']:
-                    if user_input[p['item']] != p['match']:
-                        all_match = False
-                        break
-                if all_match:
-                    is_correct = True
+                if q_data.get('pairs'):
+                    for p in q_data['pairs']:
+                        # 사용자가 선택하지 않았거나 틀렸을 경우
+                        if user_input.get(p['item']) != p['match']:
+                            all_match = False
+                            break
+                    if all_match:
+                        is_correct = True
 
-            # 결과 메시지 출력
+            # 결과 메시지
             if is_correct:
                 st.balloons()
                 st.success("🎉 정답입니다! 훌륭해요.")
             else:
                 st.error("아쉽네요. 다시 한번 확인해보세요!")
+                
                 # 틀렸을 때 정답 공개
-                if q_type == "연결하기":
+                if q_type == "연결하기" and q_data.get('pairs'):
                     st.write("---")
                     st.write("**[정답 연결]**")
                     for p in q_data['pairs']:
@@ -237,4 +246,3 @@ if 'quiz' in st.session_state and st.session_state['quiz']:
 
 elif 'quiz' not in st.session_state or st.session_state['quiz'] is None:
     st.info("👈 왼쪽 사이드바에서 설정을 마치고 [새 문제 만들기]를 눌러주세요.")
-
