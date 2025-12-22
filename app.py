@@ -33,7 +33,7 @@ safety_settings = [
 ]
 
 try:
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-flash-latest')
 except Exception as e:
     st.error(f"API 키 설정 오류: {e}")
 
@@ -295,3 +295,4 @@ else:
 
     elif 'quiz' not in st.session_state or st.session_state['quiz'] is None:
         st.info("👈 왼쪽에서 [새 문제 만들기]를 눌러 시작하세요.")
+
