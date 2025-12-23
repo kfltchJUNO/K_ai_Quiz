@@ -16,7 +16,7 @@ class SharedState:
 
 shared_state = SharedState()
 
-# API 키 설정 (보안 강화 버전: Secrets 사용)
+# API 키 설정
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
@@ -87,7 +87,7 @@ def admin_dialog():
             st.rerun()
 
 # ==========================================
-# 3. AI 퀴즈 생성 함수
+# 3. AI 퀴즈 생성 함수 (빈칸 채우기 로직 수정됨)
 # ==========================================
 def make_quiz(level, category, q_type):
     category_instruction = ""
@@ -96,13 +96,15 @@ def make_quiz(level, category, q_type):
     elif category == "어휘":
         category_instruction = "문맥에 맞는 단어 선택, 유의어, 반의어 등 어휘의 의미를 묻는 문제 위주로 출제하세요."
 
+    # ★★★ [수정] 단답형 -> 빈칸 채우기 로직 변경 ★★★
     json_structure = ""
     if q_type == "4지선다":
         json_structure = """{"question": "지문", "options": ["보기1", "보기2", "보기3", "보기4"], "answer": "정답", "explanation": "해설"}"""
     elif q_type == "O/X":
         json_structure = """{"question": "맞으면 O, 틀리면 X를 선택하세요.", "options": ["O", "X"], "answer": "O 또는 X", "explanation": "해설"}"""
-    elif q_type == "단답형":
-        json_structure = """{"question": "지문", "answer": "정답단어", "explanation": "해설"}"""
+    elif q_type == "빈칸 채우기":
+        # AI에게 빈칸(____)이 포함된 문장을 만들라고 지시
+        json_structure = """{"question": "빈칸(____)이 포함된 문제 문장", "answer": "빈칸에 들어갈 정답 단어", "explanation": "해설"}"""
     elif q_type == "연결하기":
         json_structure = """{"question": "지문", "pairs": [{"item": "항목(단어/문법표현)", "match": "짝(뜻/쓰임)"}, ...], "explanation": "해설"}"""
 
@@ -186,7 +188,14 @@ else:
         with col2:
             s_category = st.selectbox("영역", ["어휘", "문법"])
             
-        s_type = st.radio("문제 유형", ["4지선다", "O/X", "단답형", "연결하기"])
+        # ★★★ [수정] 1,2급일 때 문제 유형 제한 ★★★
+        if s_level in ["1급", "2급"]:
+            available_types = ["4지선다", "O/X"]
+        else:
+            # '단답형' 대신 '빈칸 채우기'로 변경
+            available_types = ["4지선다", "O/X", "빈칸 채우기", "연결하기"]
+            
+        s_type = st.radio("문제 유형", available_types)
         
         st.divider()
         
@@ -222,8 +231,6 @@ else:
         # 광고 및 후원
         # ==========================================
         st.divider()
-        
-        # 1. Buy Me a Coffee
         st.markdown(
             """
             <a href="[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)" target="_blank" style="text-decoration:none;">
@@ -235,9 +242,7 @@ else:
             unsafe_allow_html=True
         )
         
-        # 2. 쿠팡 파트너스
         ad_links = ["[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)"]
-        
         if ad_links:
             selected_link = random.choice(ad_links)
             st.markdown(
@@ -265,6 +270,7 @@ else:
             st.info(f"Q. {q_data['question']}")
 
             if q_type == "연결하기":
+                # ... (연결하기 로직 동일) ...
                 if s_category == "어휘":
                     label_left, label_right = "단어", "의미"
                 else:
@@ -319,7 +325,6 @@ else:
                             for item, match in correct_pairs.items():
                                 st.write(f"🔹 **{item}** ➡ {match}")
                         
-                        # ★★★ [수정] 1, 2급이 아닐 때만 해설 표시
                         if s_level not in ["1급", "2급"]:
                             st.info(f"💡 해설: {q_data.get('explanation', '')}")
 
@@ -327,10 +332,12 @@ else:
                 with st.form("quiz_form"):
                     user_input = None
                     options = q_data.get('options', [])
+                    
                     if q_type in ["4지선다", "O/X"]:
                         user_input = st.radio("정답을 선택하세요:", options)
-                    elif q_type == "단답형":
-                        user_input = st.text_input("정답을 입력하세요:")
+                        
+                    elif q_type == "빈칸 채우기": # ★★★ [수정] 단답형 -> 빈칸 채우기
+                        user_input = st.text_input("빈칸에 알맞은 말을 입력하세요:")
                     
                     submitted = st.form_submit_button("정답 확인", use_container_width=True)
                     
@@ -338,7 +345,9 @@ else:
                         st.session_state['solved'] = True
                         is_correct = False
                         answer = q_data.get('answer', '')
-                        if q_type == "단답형":
+                        
+                        if q_type == "빈칸 채우기":
+                            # 공백 제거 후 비교
                             if str(user_input).strip() == str(answer).strip():
                                 is_correct = True
                         else:
@@ -351,7 +360,6 @@ else:
                         else:
                             st.error(f"아쉽네요. 정답은 '{answer}' 입니다.")
                         
-                        # ★★★ [수정] 1, 2급이 아닐 때만 해설 표시
                         if s_level not in ["1급", "2급"]:
                             st.info(f"💡 해설: {q_data.get('explanation', '')}")
         else:
