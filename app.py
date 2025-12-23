@@ -238,40 +238,30 @@ else:
                     if not quiz_data:
                          st.error("문제를 받아오지 못했습니다. 다시 시도해주세요.")
 
-        # ==========================================
-        # [수정 완료] 후원 및 광고
-        # 링크에 특수문자([])를 완전히 제거했습니다.
+# ==========================================
+        # [수정 완료] 후원 및 광고 (st.link_button 사용)
         # ==========================================
         st.divider()
         st.write("☕ **개발자 응원하기**")
         
-        # 1. Buy Me a Coffee (HTML 방식, target="_blank"로 새창 열기 강제)
-        st.markdown(
-            """
-            <a href="[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)" target="_blank" style="text-decoration:none;">
-                <div style="background-color:#FFDD00; color:black; padding:10px 20px; text-align:center; border-radius:10px; font-weight:bold; width:100%; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor:pointer;">
-                    ☕ 커피 한 잔 사주기
-                </div>
-            </a>
-            """,
-            unsafe_allow_html=True
+        # 1. 커피 후원 버튼
+        st.link_button(
+            label="☕ 커피 한 잔 후원하기", 
+            # 수정 전: url="[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)"
+            # 수정 후: 순수한 URL만 입력
+            url="https://buymeacoffee.com/ot.helper"
         )
         
-        # 2. 쿠팡 파트너스 (HTML 방식)
-        # 중요: href 안에 절대 [ ] 나 ( ) 를 넣지 마세요.
-        st.markdown(
-            """
-            <a href="[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)" target="_blank" style="text-decoration:none;">
-                <div style="background-color:#E33A3D; color:white; padding:10px 20px; text-align:center; border-radius:10px; font-weight:bold; width:100%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor:pointer;">
-                    🚀 한국어 책 구경하기
-                </div>
-            </a>
-            <div style="font-size: 10px; color: #888; text-align: center; margin-top: 5px;">
-                "이 포스팅은 쿠팡 파트너스 활동의 일환으로,<br>이에 따른 일정액의 수수료를 제공받습니다."
-            </div>
-            """,
-            unsafe_allow_html=True
+        st.write("🚀 **추천 교재**")
+        # 2. 쿠팡 링크 버튼
+        st.link_button(
+            label="📚 한국어 책 구경가기", 
+            # 수정 전: url="[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)"
+            # 수정 후: 순수한 URL만 입력
+            url="https://link.coupang.com/a/dhejus"
         )
+        
+        st.caption("이 포스팅은 쿠팡 파트너스 활동의 일환으로,\n이에 따른 일정액의 수수료를 제공받습니다.")
 
     # 문제 화면 표시
     if 'quiz' in st.session_state and st.session_state['quiz']:
@@ -372,3 +362,4 @@ else:
 
     elif 'quiz' not in st.session_state or st.session_state['quiz'] is None:
         st.info("👈 왼쪽에서 [새 문제 만들기]를 눌러 시작하세요.")
+
