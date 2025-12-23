@@ -270,7 +270,8 @@ else:
         book_recommendations = [
             # [수정] 여기도 주소만 넣어야 함
             "https://link.coupang.com/a/dhib2N",
-            "https://link.coupang.com/a/dhic9A"
+            "https://link.coupang.com/a/dhic9A",
+            "https://link.coupang.com/a/dhimI2"
         ]
         
         st.link_button(
@@ -381,4 +382,5 @@ else:
 
     elif 'quiz' not in st.session_state or st.session_state['quiz'] is None:
         st.info("👈 왼쪽에서 [새 문제 만들기]를 눌러 시작하세요.")
+
 
