@@ -19,8 +19,8 @@ shared_state = SharedState()
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
-    # ★★★ 여기에 API 키를 다시 넣어주세요! ★★★
-    api_key = "여기에_API_KEY_를_넣으세요"
+    # ★★★★★ [중요] 여기에 API 키를 꼭 다시 넣어주세요!! ★★★★★
+    api_key = "AIzaSyAQCS9T4tnFgvQUOmJUBjDTnf0MKnfajsk"
 
 if "ADMIN_ID" in st.secrets:
     ADMIN_ID = st.secrets["ADMIN_ID"]
@@ -84,7 +84,7 @@ def admin_dialog():
             st.rerun()
 
 # ==========================================
-# 3. AI 퀴즈 생성 함수 (데이터 파싱 강화!)
+# 3. AI 퀴즈 생성 함수 (에러 상세 출력 기능 추가)
 # ==========================================
 def make_quiz(level, category, q_type):
     category_instruction = ""
@@ -119,11 +119,8 @@ def make_quiz(level, category, q_type):
         )
         text = response.text
         
-        # ★★★ [핵심 수정] JSON 데이터만 발라내기 ★★★
-        # AI가 가끔 ```json ... ``` 같은 마크다운을 붙이거나 잡담을 섞을 때를 대비
+        # JSON 파싱 강화
         text = text.replace("```json", "").replace("```JSON", "").replace("```", "")
-        
-        # 중괄호 { } 찾아서 그 안의 내용만 추출 (가장 확실한 방법)
         start_idx = text.find("{")
         end_idx = text.rfind("}")
         
@@ -132,12 +129,10 @@ def make_quiz(level, category, q_type):
             
         data = json.loads(text)
         
-        # 리스트로 묶여서 오면 첫 번째 것만 꺼냄
         if isinstance(data, list):
             data = data[0] if len(data) > 0 else None
         
         if isinstance(data, dict):
-            # O/X 문제 보기는 강제 고정
             if q_type == "O/X":
                 data['options'] = ["O", "X"]
             return data
@@ -145,8 +140,8 @@ def make_quiz(level, category, q_type):
             return None
             
     except Exception as e:
-        # 터미널에 에러 내용을 출력해서 디버깅을 도움
-        print(f"Error making quiz: {e}")
+        # ★ 에러 내용을 화면에 출력하여 원인 파악 (중요)
+        st.error(f"오류 발생 내용: {e}")
         return None
 
 # ==========================================
@@ -164,7 +159,7 @@ st.caption("등급과 유형을 선택하고 AI와 함께 한국어를 연습해
 if not shared_state.quiz_active and not st.session_state['is_admin']:
     st.divider()
     st.error("⛔ 현재 퀴즈 생성 기능이 비활성화되어 있습니다.")
-    st.info("관리자가 기능을 켤 때까지 잠시만 기다려주세요.")
+    st.info("선생님이 기능을 켜주실 때까지 잠시만 기다려주세요.")
     if st.button("기능이 켜졌는지 확인하기 (새로고침)"):
         st.rerun()
 
@@ -212,10 +207,12 @@ else:
                     status.update(label="출제 완료!", state="complete", expanded=False)
                 else:
                     status.update(label="생성 실패", state="error")
-                    st.error("문제를 생성하는 도중 오류가 발생했습니다. 다시 시도해주세요.")
+                    # make_quiz 안에서 에러 메시지를 이미 출력했으므로 여기선 간단히
+                    if not quiz_data:
+                         st.error("문제를 받아오지 못했습니다. 위의 오류 메시지를 확인해주세요.")
 
         # ==========================================
-        # ★★★ [수익화] 광고 및 후원 ★★★
+        # ★★★ [수익화] 광고 및 후원 (버튼으로 수정됨) ★★★
         # ==========================================
         st.divider()
         
@@ -223,7 +220,7 @@ else:
         st.markdown(
             """
             <a href="[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)" target="_blank">
-                <button style="background-color:#FFDD00; border:none; color:black; padding:10px 20px; text-align:center; text-decoration:none; display:inline-block; font-size:14px; border-radius:10px; cursor:pointer; width:100%; margin-bottom: 20px; font-weight: bold;">
+                <button style="background-color:#FFDD00; border:none; color:black; padding:10px 20px; text-align:center; text-decoration:none; display:inline-block; font-size:14px; border-radius:10px; cursor:pointer; width:100%; margin-bottom: 10px; font-weight: bold;">
                     ☕ 커피 한 잔 사주기
                 </button>
             </a>
@@ -231,29 +228,24 @@ else:
             unsafe_allow_html=True
         )
         
-        # 2. 쿠팡 파트너스 배너 (랜덤 링크)
-        st.caption("📚 추천 한국어 교재")
-        
+        # 2. 쿠팡 파트너스 (버튼 버전)
         ad_links = [
             "[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)",
         ]
         
         if ad_links:
             selected_link = random.choice(ad_links)
-            banner_img = "[https://image7.coupangcdn.com/image/coupang/home/sns/chat_icon.png](https://image7.coupangcdn.com/image/coupang/home/sns/chat_icon.png)"
-
+            
+            # 빨간색(쿠팡 로켓 색상) 버튼으로 변경
             st.markdown(
                 f"""
-                <div style="background-color: #f8f9fa; padding: 10px; border-radius: 10px; border: 1px solid #eee;">
-                    <a href="{selected_link}" target="_blank" style="text-decoration: none; color: inherit;">
-                        <img src="{banner_img}" width="100%" style="border-radius:5px; margin-bottom: 5px;">
-                        <div style="text-align:center; font-weight:bold; font-size:14px; margin-bottom:5px;">
-                            🚀 교재 최저가 보러가기
-                        </div>
-                    </a>
-                    <div style="font-size: 10px; color: #888; text-align: center; line-height: 1.2;">
-                        "이 포스팅은 쿠팡 파트너스 활동의 일환으로,<br>이에 따른 일정액의 수수료를 제공받습니다."
-                    </div>
+                <a href="{selected_link}" target="_blank">
+                    <button style="background-color:#E33A3D; border:none; color:white; padding:10px 20px; text-align:center; text-decoration:none; display:inline-block; font-size:14px; border-radius:10px; cursor:pointer; width:100%; font-weight: bold;">
+                        🚀 한국어 책 구경하기
+                    </button>
+                </a>
+                <div style="font-size: 10px; color: #888; text-align: center; margin-top: 5px;">
+                    "이 포스팅은 쿠팡 파트너스 활동의 일환으로,<br>이에 따른 일정액의 수수료를 제공받습니다."
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -358,4 +350,3 @@ else:
 
     elif 'quiz' not in st.session_state or st.session_state['quiz'] is None:
         st.info("👈 왼쪽에서 [새 문제 만들기]를 눌러 시작하세요.")
-
