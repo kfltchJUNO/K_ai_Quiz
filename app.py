@@ -16,23 +16,19 @@ class SharedState:
 
 shared_state = SharedState()
 
-# ★★★ [보안 강화] 코드 안에 키를 적는 곳을 아예 없앴습니다! ★★★
-# 이제 이 파일에는 선생님의 API 키가 단 한 글자도 들어가지 않습니다.
+# API 키 설정 (보안 강화 버전: Secrets 사용)
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
-    # 키가 없으면 에러 메시지를 띄우고 앱을 멈춥니다.
     st.error("🚨 API 키를 찾을 수 없습니다!")
-    st.info("1. 내 컴퓨터라면: .streamlit/secrets.toml 파일에 키가 있는지 확인하세요.")
-    st.info("2. 배포된 웹이라면: Streamlit Cloud의 Settings > Secrets에 키를 등록했는지 확인하세요.")
-    st.stop() # 더 이상 실행하지 않음
+    st.info("내 컴퓨터라면 .streamlit/secrets.toml 파일을, 웹이라면 Secrets 설정을 확인해주세요.")
+    st.stop()
 
-# 관리자 ID/PW 설정
+# 관리자 설정
 if "ADMIN_ID" in st.secrets:
     ADMIN_ID = st.secrets["ADMIN_ID"]
     ADMIN_PW = st.secrets["ADMIN_PW"]
 else:
-    # 관리자 정보가 없으면 기본값 사용 (보안을 위해 secrets 사용 권장)
     ADMIN_ID = "오준호"
     ADMIN_PW = "qlalf1"
 
@@ -125,9 +121,8 @@ def make_quiz(level, category, q_type):
             generation_config={"response_mime_type": "application/json"} 
         )
         text = response.text
-        
-        # JSON 파싱
         text = text.replace("```json", "").replace("```JSON", "").replace("```", "").strip()
+        
         try:
             data = json.loads(text)
         except json.JSONDecodeError:
@@ -224,11 +219,11 @@ else:
                          st.error("문제를 받아오지 못했습니다. 다시 시도해주세요.")
 
         # ==========================================
-        # ★★★ [수익화] 광고 및 후원 ★★★
+        # 광고 및 후원
         # ==========================================
         st.divider()
         
-        # 1. Buy Me a Coffee (버튼형 링크)
+        # 1. Buy Me a Coffee
         st.markdown(
             """
             <a href="[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)" target="_blank" style="text-decoration:none;">
@@ -240,7 +235,7 @@ else:
             unsafe_allow_html=True
         )
         
-        # 2. 쿠팡 파트너스 배너
+        # 2. 쿠팡 파트너스
         ad_links = ["[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)"]
         
         if ad_links:
@@ -323,7 +318,10 @@ else:
                         with st.expander("정답 보기"):
                             for item, match in correct_pairs.items():
                                 st.write(f"🔹 **{item}** ➡ {match}")
-                        st.info(f"💡 해설: {q_data.get('explanation', '')}")
+                        
+                        # ★★★ [수정] 1, 2급이 아닐 때만 해설 표시
+                        if s_level not in ["1급", "2급"]:
+                            st.info(f"💡 해설: {q_data.get('explanation', '')}")
 
             else:
                 with st.form("quiz_form"):
@@ -352,10 +350,12 @@ else:
                             st.success("🎉 정답입니다!")
                         else:
                             st.error(f"아쉽네요. 정답은 '{answer}' 입니다.")
-                        st.info(f"💡 해설: {q_data.get('explanation', '')}")
+                        
+                        # ★★★ [수정] 1, 2급이 아닐 때만 해설 표시
+                        if s_level not in ["1급", "2급"]:
+                            st.info(f"💡 해설: {q_data.get('explanation', '')}")
         else:
             st.error("문제를 불러오는 중 오류가 발생했습니다. '새 문제 만들기'를 다시 눌러주세요.")
 
     elif 'quiz' not in st.session_state or st.session_state['quiz'] is None:
         st.info("👈 왼쪽에서 [새 문제 만들기]를 눌러 시작하세요.")
-
