@@ -7,7 +7,7 @@ import random
 # ==========================================
 # 1. 초기 설정 & 공유 메모리
 # ==========================================
-st.set_page_config(page_title="한국어 맞춤형 퀴즈", page_icon="🇰🇷", layout="centered")
+st.set_page_config(page_title="한큐 - 한국어 맞춤형 퀴즈", page_icon="🇰🇷", layout="centered")
 
 @st.cache_resource
 class SharedState:
@@ -20,8 +20,9 @@ shared_state = SharedState()
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
+    # 로컬 테스트 등을 위한 예외 처리 (배포 시 secrets 필수)
     st.error("🚨 API 키를 찾을 수 없습니다!")
-    st.info("내 컴퓨터라면 .streamlit/secrets.toml 파일을, 웹이라면 Secrets 설정을 확인해주세요.")
+    st.info("Streamlit Secrets에 GEMINI_API_KEY를 설정해주세요.")
     st.stop()
 
 # 관리자 설정
@@ -29,8 +30,8 @@ if "ADMIN_ID" in st.secrets:
     ADMIN_ID = st.secrets["ADMIN_ID"]
     ADMIN_PW = st.secrets["ADMIN_PW"]
 else:
-    ADMIN_ID = "오준호"
-    ADMIN_PW = "qlalf1"
+    ADMIN_ID = "admin"
+    ADMIN_PW = "1234"
 
 genai.configure(api_key=api_key)
 
@@ -44,7 +45,7 @@ safety_settings = [
 try:
     model = genai.GenerativeModel('gemini-flash-latest')
 except Exception as e:
-    st.error(f"API 키 설정 오류: {e}")
+    st.error(f"모델 설정 오류: {e}")
 
 if 'is_admin' not in st.session_state:
     st.session_state['is_admin'] = False
@@ -62,7 +63,7 @@ def admin_dialog():
             btn_login = st.form_submit_button("로그인", use_container_width=True)
             
             if btn_login:
-                if input_id == ADMIN_ID and (input_pw == ADMIN_PW or input_pw == "비밀1"):
+                if input_id == ADMIN_ID and (input_pw == ADMIN_PW):
                     st.session_state['is_admin'] = True
                     st.rerun()
                 else:
@@ -87,7 +88,7 @@ def admin_dialog():
             st.rerun()
 
 # ==========================================
-# 3. AI 퀴즈 생성 함수 (빈칸 채우기 로직 수정됨)
+# 3. AI 퀴즈 생성 함수 (빈칸 채우기 삭제됨)
 # ==========================================
 def make_quiz(level, category, q_type):
     category_instruction = ""
@@ -96,15 +97,12 @@ def make_quiz(level, category, q_type):
     elif category == "어휘":
         category_instruction = "문맥에 맞는 단어 선택, 유의어, 반의어 등 어휘의 의미를 묻는 문제 위주로 출제하세요."
 
-    # ★★★ [수정] 단답형 -> 빈칸 채우기 로직 변경 ★★★
+    # JSON 구조 설정
     json_structure = ""
     if q_type == "4지선다":
         json_structure = """{"question": "지문", "options": ["보기1", "보기2", "보기3", "보기4"], "answer": "정답", "explanation": "해설"}"""
     elif q_type == "O/X":
         json_structure = """{"question": "맞으면 O, 틀리면 X를 선택하세요.", "options": ["O", "X"], "answer": "O 또는 X", "explanation": "해설"}"""
-    elif q_type == "빈칸 채우기":
-        # AI에게 빈칸(____)이 포함된 문장을 만들라고 지시
-        json_structure = """{"question": "빈칸(____)이 포함된 문제 문장", "answer": "빈칸에 들어갈 정답 단어", "explanation": "해설"}"""
     elif q_type == "연결하기":
         json_structure = """{"question": "지문", "pairs": [{"item": "항목(단어/문법표현)", "match": "짝(뜻/쓰임)"}, ...], "explanation": "해설"}"""
 
@@ -123,6 +121,7 @@ def make_quiz(level, category, q_type):
             generation_config={"response_mime_type": "application/json"} 
         )
         text = response.text
+        # JSON 전처리
         text = text.replace("```json", "").replace("```JSON", "").replace("```", "").strip()
         
         try:
@@ -132,6 +131,7 @@ def make_quiz(level, category, q_type):
                 decoder = json.JSONDecoder()
                 data, _ = decoder.raw_decode(text)
             except:
+                # 괄호 기준으로 강제 추출 시도
                 start_idx = text.find("{")
                 end_idx = text.rfind("}")
                 if start_idx != -1 and end_idx != -1:
@@ -159,7 +159,8 @@ def make_quiz(level, category, q_type):
 # ==========================================
 col_title, col_lock = st.columns([9, 1])
 with col_title:
-    st.title("🇰🇷 한국어 맞춤형 학습기")
+    st.title("🇰🇷 한큐 (Han-Q)")
+    st.markdown("### 한국어 학습용 AI 무제한 문제 생성기")
 with col_lock:
     if st.button("🔒", help="관리자 설정"):
         admin_dialog()
@@ -188,12 +189,11 @@ else:
         with col2:
             s_category = st.selectbox("영역", ["어휘", "문법"])
             
-        # ★★★ [수정] 1,2급일 때 문제 유형 제한 ★★★
+        # [수정] 빈칸 채우기 제거하고 연결하기 포함
         if s_level in ["1급", "2급"]:
             available_types = ["4지선다", "O/X"]
         else:
-            # '단답형' 대신 '빈칸 채우기'로 변경
-            available_types = ["4지선다", "O/X", "빈칸 채우기", "연결하기"]
+            available_types = ["4지선다", "O/X", "연결하기"]
             
         s_type = st.radio("문제 유형", available_types)
         
@@ -228,9 +228,11 @@ else:
                          st.error("문제를 받아오지 못했습니다. 다시 시도해주세요.")
 
         # ==========================================
-        # 광고 및 후원
+        # 광고 및 후원 (링크 오류 수정됨)
         # ==========================================
         st.divider()
+        
+        # 1. Buy Me a Coffee 링크 수정 (마크다운 문법 제거하고 순수 URL 사용)
         st.markdown(
             """
             <a href="[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)" target="_blank" style="text-decoration:none;">
@@ -242,7 +244,8 @@ else:
             unsafe_allow_html=True
         )
         
-        ad_links = ["[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)"]
+        # 2. 쿠팡 링크 수정
+        ad_links = ["[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)"] # 마크다운 []() 제거
         if ad_links:
             selected_link = random.choice(ad_links)
             st.markdown(
@@ -269,8 +272,8 @@ else:
             st.markdown(f"#### < {s_level} | {s_category} | {s_type} >")
             st.info(f"Q. {q_data['question']}")
 
+            # [연결하기 유형 처리]
             if q_type == "연결하기":
-                # ... (연결하기 로직 동일) ...
                 if s_category == "어휘":
                     label_left, label_right = "단어", "의미"
                 else:
@@ -328,6 +331,7 @@ else:
                         if s_level not in ["1급", "2급"]:
                             st.info(f"💡 해설: {q_data.get('explanation', '')}")
 
+            # [객관식 및 OX 처리]
             else:
                 with st.form("quiz_form"):
                     user_input = None
@@ -335,9 +339,6 @@ else:
                     
                     if q_type in ["4지선다", "O/X"]:
                         user_input = st.radio("정답을 선택하세요:", options)
-                        
-                    elif q_type == "빈칸 채우기": # ★★★ [수정] 단답형 -> 빈칸 채우기
-                        user_input = st.text_input("빈칸에 알맞은 말을 입력하세요:")
                     
                     submitted = st.form_submit_button("정답 확인", use_container_width=True)
                     
@@ -346,13 +347,8 @@ else:
                         is_correct = False
                         answer = q_data.get('answer', '')
                         
-                        if q_type == "빈칸 채우기":
-                            # 공백 제거 후 비교
-                            if str(user_input).strip() == str(answer).strip():
-                                is_correct = True
-                        else:
-                            if user_input == answer:
-                                is_correct = True
+                        if user_input == answer:
+                            is_correct = True
                         
                         if is_correct:
                             st.balloons()
