@@ -91,14 +91,14 @@ def admin_dialog():
 # ==========================================
 def make_quiz(level, category, q_type):
     
-    # [난이도 및 단어 선택 지시사항 강화]
+    # [수정] 1-2급 난이도 조절 프롬프트 강화
     tone_instruction = ""
     if level in ["1급", "2급"]:
         tone_instruction = """
-        [매우 중요 - 어휘 수준 조절]
-        1. 문제 지문(question)에 '의미하다', '해당하다', '적절하다' 같은 한자어 서술어를 쓰지 마세요.
-        2. 대신 '뜻', '맞는 것', '고르세요' 처럼 초급 학습자가 아는 쉬운 단어를 사용하세요.
-        3. 문장은 복문 대신 단문을 사용하여 최대한 짧고 간결하게 만드세요.
+        [⚠️ 매우 중요: 어휘 난이도 제한]
+        1. 문제 지문(question)에 '의미하다', '해당하다', '적절하다' 같은 어려운 한자어 동사를 절대 쓰지 마세요.
+        2. 반드시 '뜻', '맞는 것', '고르세요' 같은 기초 어휘만 사용하세요.
+        3. 문장은 '~(으)세요'나 '~(이)에요' 체로 끝내고, 복잡한 문법을 피하세요.
         """
     
     category_instruction = ""
@@ -239,26 +239,39 @@ else:
                          st.error("문제를 받아오지 못했습니다. 다시 시도해주세요.")
 
         # ==========================================
-        # [확실한 수정] 후원 및 광고 (st.link_button 사용)
-        # HTML 태그를 모두 제거하고 스트림릿 전용 버튼만 사용합니다.
+        # [수정 완료] 후원 및 광고
+        # 링크에 특수문자([])를 완전히 제거했습니다.
         # ==========================================
         st.divider()
         st.write("☕ **개발자 응원하기**")
         
-        # 1. 커피 후원 버튼 (이 코드는 무조건 외부 새 탭으로 열립니다)
-        st.link_button(
-            label="☕ 커피 한 잔 후원하기", 
-            url="[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)"
+        # 1. Buy Me a Coffee (HTML 방식, target="_blank"로 새창 열기 강제)
+        st.markdown(
+            """
+            <a href="[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)" target="_blank" style="text-decoration:none;">
+                <div style="background-color:#FFDD00; color:black; padding:10px 20px; text-align:center; border-radius:10px; font-weight:bold; width:100%; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor:pointer;">
+                    ☕ 커피 한 잔 사주기
+                </div>
+            </a>
+            """,
+            unsafe_allow_html=True
         )
         
-        st.write("🚀 **추천 교재**")
-        # 2. 쿠팡 링크 버튼
-        st.link_button(
-            label="📚 한국어 책 구경가기", 
-            url="[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)"
+        # 2. 쿠팡 파트너스 (HTML 방식)
+        # 중요: href 안에 절대 [ ] 나 ( ) 를 넣지 마세요.
+        st.markdown(
+            """
+            <a href="[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)" target="_blank" style="text-decoration:none;">
+                <div style="background-color:#E33A3D; color:white; padding:10px 20px; text-align:center; border-radius:10px; font-weight:bold; width:100%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor:pointer;">
+                    🚀 한국어 책 구경하기
+                </div>
+            </a>
+            <div style="font-size: 10px; color: #888; text-align: center; margin-top: 5px;">
+                "이 포스팅은 쿠팡 파트너스 활동의 일환으로,<br>이에 따른 일정액의 수수료를 제공받습니다."
+            </div>
+            """,
+            unsafe_allow_html=True
         )
-        
-        st.caption("이 포스팅은 쿠팡 파트너스 활동의 일환으로,\n이에 따른 일정액의 수수료를 제공받습니다.")
 
     # 문제 화면 표시
     if 'quiz' in st.session_state and st.session_state['quiz']:
@@ -272,7 +285,7 @@ else:
 
             if q_type == "연결하기":
                 if s_category == "어휘":
-                    label_left, label_right = "단어", "뜻" # 쉬운 단어로 변경
+                    label_left, label_right = "단어", "뜻"
                 else:
                     label_left, label_right = "문법 표현", "설명"
 
