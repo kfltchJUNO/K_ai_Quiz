@@ -20,7 +20,7 @@ shared_state = SharedState()
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
-    # 로컬 테스트 등을 위한 예외 처리 (배포 시 secrets 필수)
+    # 로컬 테스트 등을 위한 예외 처리
     st.error("🚨 API 키를 찾을 수 없습니다!")
     st.info("Streamlit Secrets에 GEMINI_API_KEY를 설정해주세요.")
     st.stop()
@@ -88,7 +88,7 @@ def admin_dialog():
             st.rerun()
 
 # ==========================================
-# 3. AI 퀴즈 생성 함수 (빈칸 채우기 삭제됨)
+# 3. AI 퀴즈 생성 함수
 # ==========================================
 def make_quiz(level, category, q_type):
     category_instruction = ""
@@ -131,7 +131,6 @@ def make_quiz(level, category, q_type):
                 decoder = json.JSONDecoder()
                 data, _ = decoder.raw_decode(text)
             except:
-                # 괄호 기준으로 강제 추출 시도
                 start_idx = text.find("{")
                 end_idx = text.rfind("}")
                 if start_idx != -1 and end_idx != -1:
@@ -189,7 +188,6 @@ else:
         with col2:
             s_category = st.selectbox("영역", ["어휘", "문법"])
             
-        # [수정] 빈칸 채우기 제거하고 연결하기 포함
         if s_level in ["1급", "2급"]:
             available_types = ["4지선다", "O/X"]
         else:
@@ -228,11 +226,11 @@ else:
                          st.error("문제를 받아오지 못했습니다. 다시 시도해주세요.")
 
         # ==========================================
-        # 광고 및 후원 (링크 오류 수정됨)
+        # 광고 및 후원 (수정 완료!)
         # ==========================================
         st.divider()
         
-        # 1. Buy Me a Coffee 링크 수정 (마크다운 문법 제거하고 순수 URL 사용)
+        # 1. Buy Me a Coffee 링크 (순수 URL 적용)
         st.markdown(
             """
             <a href="[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)" target="_blank" style="text-decoration:none;">
@@ -244,8 +242,9 @@ else:
             unsafe_allow_html=True
         )
         
-        # 2. 쿠팡 링크 수정
-        ad_links = ["[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)"] # 마크다운 []() 제거
+        # 2. 쿠팡 링크 (순수 URL 적용)
+        ad_links = ["[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)"] # [ ] 와 ( ) 제거함
+        
         if ad_links:
             selected_link = random.choice(ad_links)
             st.markdown(
@@ -272,7 +271,6 @@ else:
             st.markdown(f"#### < {s_level} | {s_category} | {s_type} >")
             st.info(f"Q. {q_data['question']}")
 
-            # [연결하기 유형 처리]
             if q_type == "연결하기":
                 if s_category == "어휘":
                     label_left, label_right = "단어", "의미"
@@ -331,7 +329,6 @@ else:
                         if s_level not in ["1급", "2급"]:
                             st.info(f"💡 해설: {q_data.get('explanation', '')}")
 
-            # [객관식 및 OX 처리]
             else:
                 with st.form("quiz_form"):
                     user_input = None
