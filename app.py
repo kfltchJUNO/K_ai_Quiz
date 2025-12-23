@@ -16,20 +16,23 @@ class SharedState:
 
 shared_state = SharedState()
 
-# ★★★ [수정됨] 이제 코드에 키를 직접 적는 칸은 아예 삭제했습니다! ★★★
-# 로컬에서는 .streamlit/secrets.toml 파일에서 가져오고,
-# 배포 환경에서는 Streamlit Cloud Secrets에서 가져옵니다.
+# ★★★ [보안 강화] 코드 안에 키를 적는 곳을 아예 없앴습니다! ★★★
+# 이제 이 파일에는 선생님의 API 키가 단 한 글자도 들어가지 않습니다.
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
-    st.error("API 키를 찾을 수 없습니다. .streamlit/secrets.toml 파일을 확인하거나 배포 설정을 확인해주세요.")
-    st.stop() # 키가 없으면 아예 실행 중지
+    # 키가 없으면 에러 메시지를 띄우고 앱을 멈춥니다.
+    st.error("🚨 API 키를 찾을 수 없습니다!")
+    st.info("1. 내 컴퓨터라면: .streamlit/secrets.toml 파일에 키가 있는지 확인하세요.")
+    st.info("2. 배포된 웹이라면: Streamlit Cloud의 Settings > Secrets에 키를 등록했는지 확인하세요.")
+    st.stop() # 더 이상 실행하지 않음
 
+# 관리자 ID/PW 설정
 if "ADMIN_ID" in st.secrets:
     ADMIN_ID = st.secrets["ADMIN_ID"]
     ADMIN_PW = st.secrets["ADMIN_PW"]
 else:
-    # 관리자 정보도 secrets가 없으면 기본값으로 (이건 공개되어도 덜 위험하지만 secrets 권장)
+    # 관리자 정보가 없으면 기본값 사용 (보안을 위해 secrets 사용 권장)
     ADMIN_ID = "오준호"
     ADMIN_PW = "qlalf1"
 
@@ -43,7 +46,7 @@ safety_settings = [
 ]
 
 try:
-    model = genai.GenerativeModel('gemini-flash-latest')
+    model = genai.GenerativeModel('gemini-1.5-flash')
 except Exception as e:
     st.error(f"API 키 설정 오류: {e}")
 
@@ -122,16 +125,24 @@ def make_quiz(level, category, q_type):
             generation_config={"response_mime_type": "application/json"} 
         )
         text = response.text
-        text = text.replace("```json", "").replace("```JSON", "").replace("```", "")
         
-        start_idx = text.find("{")
-        end_idx = text.rfind("}")
-        
-        if start_idx != -1 and end_idx != -1:
-            text = text[start_idx : end_idx + 1]
-            
-        data = json.loads(text)
-        
+        # JSON 파싱
+        text = text.replace("```json", "").replace("```JSON", "").replace("```", "").strip()
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            try:
+                decoder = json.JSONDecoder()
+                data, _ = decoder.raw_decode(text)
+            except:
+                start_idx = text.find("{")
+                end_idx = text.rfind("}")
+                if start_idx != -1 and end_idx != -1:
+                    text = text[start_idx : end_idx + 1]
+                    data = json.loads(text)
+                else:
+                    return None
+
         if isinstance(data, list):
             data = data[0] if len(data) > 0 else None
         
@@ -210,34 +221,36 @@ else:
                 else:
                     status.update(label="생성 실패", state="error")
                     if not quiz_data:
-                         st.error("문제를 받아오지 못했습니다. 오류 메시지를 확인해주세요.")
+                         st.error("문제를 받아오지 못했습니다. 다시 시도해주세요.")
 
         # ==========================================
         # ★★★ [수익화] 광고 및 후원 ★★★
         # ==========================================
         st.divider()
         
+        # 1. Buy Me a Coffee (버튼형 링크)
         st.markdown(
             """
-            <a href="[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)" target="_blank">
-                <button style="background-color:#FFDD00; border:none; color:black; padding:10px 20px; text-align:center; text-decoration:none; display:inline-block; font-size:14px; border-radius:10px; cursor:pointer; width:100%; margin-bottom: 10px; font-weight: bold;">
+            <a href="[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)" target="_blank" style="text-decoration:none;">
+                <div style="background-color:#FFDD00; color:black; padding:10px 20px; text-align:center; border-radius:10px; font-weight:bold; width:100%; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor:pointer;">
                     ☕ 커피 한 잔 사주기
-                </button>
+                </div>
             </a>
             """,
             unsafe_allow_html=True
         )
         
+        # 2. 쿠팡 파트너스 배너
         ad_links = ["[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)"]
         
         if ad_links:
             selected_link = random.choice(ad_links)
             st.markdown(
                 f"""
-                <a href="{selected_link}" target="_blank">
-                    <button style="background-color:#E33A3D; border:none; color:white; padding:10px 20px; text-align:center; text-decoration:none; display:inline-block; font-size:14px; border-radius:10px; cursor:pointer; width:100%; font-weight: bold;">
+                <a href="{selected_link}" target="_blank" style="text-decoration:none;">
+                    <div style="background-color:#E33A3D; color:white; padding:10px 20px; text-align:center; border-radius:10px; font-weight:bold; width:100%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor:pointer;">
                         🚀 한국어 책 구경하기
-                    </button>
+                    </div>
                 </a>
                 <div style="font-size: 10px; color: #888; text-align: center; margin-top: 5px;">
                     "이 포스팅은 쿠팡 파트너스 활동의 일환으로,<br>이에 따른 일정액의 수수료를 제공받습니다."
