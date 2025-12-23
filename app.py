@@ -39,7 +39,7 @@ safety_settings = [
 ]
 
 try:
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-flash-latest')
 except Exception as e:
     st.error(f"API 키 설정 오류: {e}")
 
@@ -164,7 +164,7 @@ st.caption("등급과 유형을 선택하고 AI와 함께 한국어를 연습해
 if not shared_state.quiz_active and not st.session_state['is_admin']:
     st.divider()
     st.error("⛔ 현재 퀴즈 생성 기능이 비활성화되어 있습니다.")
-    st.info("선생님이 기능을 켜주실 때까지 잠시만 기다려주세요.")
+    st.info("관리자가 기능을 켤 때까지 잠시만 기다려주세요.")
     if st.button("기능이 켜졌는지 확인하기 (새로고침)"):
         st.rerun()
 
@@ -358,3 +358,4 @@ else:
 
     elif 'quiz' not in st.session_state or st.session_state['quiz'] is None:
         st.info("👈 왼쪽에서 [새 문제 만들기]를 눌러 시작하세요.")
+
