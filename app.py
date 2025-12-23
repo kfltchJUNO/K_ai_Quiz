@@ -5,11 +5,17 @@ import time
 import random
 
 # ==========================================
-# 1. 초기 설정
+# 1. 초기 설정 & 공유 메모리
 # ==========================================
 st.set_page_config(page_title="한국어 맞춤형 퀴즈", page_icon="🇰🇷", layout="centered")
 
-# API 키 및 관리자 설정 로드
+@st.cache_resource
+class SharedState:
+    def __init__(self):
+        self.quiz_active = True 
+
+shared_state = SharedState()
+
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
@@ -24,7 +30,6 @@ else:
 
 genai.configure(api_key=api_key)
 
-# 안전 설정
 safety_settings = [
     {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
     {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
@@ -33,15 +38,12 @@ safety_settings = [
 ]
 
 try:
-    model = genai.GenerativeModel('gemini-flash-latest')
+    model = genai.GenerativeModel('gemini-1.5-flash')
 except Exception as e:
     st.error(f"API 키 설정 오류: {e}")
 
-# 세션 상태 초기화
 if 'is_admin' not in st.session_state:
     st.session_state['is_admin'] = False
-if 'quiz_active' not in st.session_state:
-    st.session_state['quiz_active'] = True 
 
 # ==========================================
 # 2. 모달(Dialog) 및 관리자 기능
@@ -64,12 +66,16 @@ def admin_dialog():
     else:
         st.success(f"✅ {ADMIN_ID}님 환영합니다.")
         st.write("---")
-        st.subheader("기능 제어")
-        is_active = st.toggle("퀴즈 생성 기능 활성화", value=st.session_state['quiz_active'])
+        st.subheader("전체 기능 제어")
         
-        if is_active != st.session_state['quiz_active']:
-            st.session_state['quiz_active'] = is_active
+        current_status = shared_state.quiz_active
+        is_active = st.toggle("학생들이 퀴즈를 풀 수 있게 하기", value=current_status)
+        
+        if is_active != current_status:
+            shared_state.quiz_active = is_active
             st.rerun()
+            
+        st.caption("※ 이 스위치를 끄면 접속해 있는 모든 학생의 기능이 정지됩니다.")
             
         st.write("---")
         if st.button("로그아웃", type="primary", use_container_width=True):
@@ -77,7 +83,7 @@ def admin_dialog():
             st.rerun()
 
 # ==========================================
-# 3. AI 퀴즈 생성 함수 (O/X 로직 수정됨!)
+# 3. AI 퀴즈 생성 함수
 # ==========================================
 def make_quiz(level, category, q_type):
     category_instruction = ""
@@ -86,12 +92,10 @@ def make_quiz(level, category, q_type):
     elif category == "어휘":
         category_instruction = "문맥에 맞는 단어 선택, 유의어, 반의어 등 어휘의 의미를 묻는 문제 위주로 출제하세요."
 
-    # ★★★ 수정된 부분: O/X와 4지선다의 JSON 형식을 분리함 ★★★
     json_structure = ""
     if q_type == "4지선다":
         json_structure = """{"question": "지문", "options": ["보기1", "보기2", "보기3", "보기4"], "answer": "정답", "explanation": "해설"}"""
     elif q_type == "O/X":
-        # O/X는 보기를 명시적으로 지정
         json_structure = """{"question": "맞으면 O, 틀리면 X를 선택하세요.", "options": ["O", "X"], "answer": "O 또는 X", "explanation": "해설"}"""
     elif q_type == "단답형":
         json_structure = """{"question": "지문", "answer": "정답단어", "explanation": "해설"}"""
@@ -113,22 +117,16 @@ def make_quiz(level, category, q_type):
             generation_config={"response_mime_type": "application/json"} 
         )
         data = json.loads(response.text)
-        
-        # 리스트 처리
         if isinstance(data, list):
             data = data[0] if len(data) > 0 else None
-                
-        # 딕셔너리 확인 및 데이터 보정
+        
         if isinstance(data, dict):
-            # ★★★ 강제 보정: O/X 문제라면 보기는 무조건 ["O", "X"]로 고정 ★★★
             if q_type == "O/X":
                 data['options'] = ["O", "X"]
             return data
         else:
             return None
-            
     except Exception as e:
-        print(f"Error: {e}")
         return None
 
 # ==========================================
@@ -143,17 +141,21 @@ with col_lock:
 
 st.caption("등급과 유형을 선택하고 AI와 함께 한국어를 연습해보세요!")
 
-# 퀴즈 기능 꺼짐 + 관리자 아님
-if not st.session_state['quiz_active'] and not st.session_state['is_admin']:
-    st.warning("⛔ 현재 선생님이 퀴즈 생성 기능을 잠시 꺼두셨습니다.")
-    st.info("수업 시간에 다시 만나요!")
+if not shared_state.quiz_active and not st.session_state['is_admin']:
+    st.divider()
+    st.error("⛔ 현재 퀴즈 생성 기능이 비활성화되어 있습니다.")
+    st.info("선생님이 기능을 켜주실 때까지 잠시만 기다려주세요.")
+    if st.button("기능이 켜졌는지 확인하기 (새로고침)"):
+        st.rerun()
 
-# 정상 작동 모드
 else:
+    if not shared_state.quiz_active and st.session_state['is_admin']:
+        st.warning("⚠️ 현재 학생들에게는 기능이 꺼져 있습니다. (관리자 권한으로 실행 중)")
+
     with st.sidebar:
         st.header("🛠️ 문제 설정")
         if st.session_state['is_admin']:
-            st.success("🔒 관리자 모드 실행 중")
+            st.success("🔒 관리자 모드")
         
         col1, col2 = st.columns(2)
         with col1:
@@ -192,18 +194,64 @@ else:
                     status.update(label="생성 실패", state="error")
                     st.error("데이터 형식이 올바르지 않습니다. 다시 시도해주세요.")
 
+        # ==========================================
+        # ★★★ [수익화] 광고 및 후원 (업그레이드) ★★★
+        # ==========================================
+        st.divider()
+        
+        # 1. Buy Me a Coffee 후원 버튼
+        st.markdown(
+            """
+            <a href="https://buymeacoffee.com/ot.helper" target="_blank">
+                <button style="background-color:#FFDD00; border:none; color:black; padding:10px 20px; text-align:center; text-decoration:none; display:inline-block; font-size:14px; border-radius:10px; cursor:pointer; width:100%; margin-bottom: 20px; font-weight: bold;">
+                    ☕ 커피 한 잔 사주기
+                </button>
+            </a>
+            """,
+            unsafe_allow_html=True
+        )
+        
+        # 2. 쿠팡 파트너스 배너 (랜덤 링크 기능 적용)
+        st.caption("📚 추천 한국어 교재")
+        
+        # ★ 여러 개의 링크를 넣고 싶다면 이 리스트 안에 콤마(,)로 구분해서 추가하세요.
+        ad_links = [
+            "https://link.coupang.com/a/dhejus",
+            # "https://link.coupang.com/a/다른_링크_1",
+            # "https://link.coupang.com/a/다른_링크_2",
+        ]
+        
+        # 리스트에서 랜덤으로 하나를 뽑음
+        selected_link = random.choice(ad_links)
+        banner_img = "https://image7.coupangcdn.com/image/coupang/home/sns/chat_icon.png"
+
+        st.markdown(
+            f"""
+            <div style="background-color: #f8f9fa; padding: 10px; border-radius: 10px; border: 1px solid #eee;">
+                <a href="{selected_link}" target="_blank" style="text-decoration: none; color: inherit;">
+                    <img src="{banner_img}" width="100%" style="border-radius:5px; margin-bottom: 5px;">
+                    <div style="text-align:center; font-weight:bold; font-size:14px; margin-bottom:5px;">
+                        🚀 교재 최저가 보러가기
+                    </div>
+                </a>
+                <div style="font-size: 10px; color: #888; text-align: center; line-height: 1.2;">
+                    "이 포스팅은 쿠팡 파트너스 활동의 일환으로,<br>이에 따른 일정액의 수수료를 제공받습니다."
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
     # 문제 화면 표시
     if 'quiz' in st.session_state and st.session_state['quiz']:
         q_data = st.session_state['quiz']
         q_type = st.session_state['q_type']
         
         if isinstance(q_data, dict) and 'question' in q_data:
-            
             st.divider()
             st.markdown(f"#### < {s_level} | {s_category} | {s_type} >")
             st.info(f"Q. {q_data['question']}")
 
-            # [유형 A] 연결하기
             if q_type == "연결하기":
                 if s_category == "어휘":
                     label_left, label_right = "단어", "의미"
@@ -213,7 +261,7 @@ else:
                 st.write(f"👈 **왼쪽 [{label_left}]**을(를) 먼저 누르고, 👉 **오른쪽 [{label_right}]**을(를) 눌러 짝을 지어주세요!")
                 
                 if st.session_state['connected_pairs']:
-                    st.markdown("##### 🔗 연결된 짝 (클릭하면 취소)")
+                    st.markdown("##### 🔗 연결된 짝")
                     cols = st.columns(2)
                     for idx, (l_item, r_item) in enumerate(st.session_state['connected_pairs'].items()):
                         if cols[idx % 2].button(f"❌ {l_item} ↔ {r_item}", key=f"del_{l_item}"):
@@ -230,7 +278,6 @@ else:
                             if st.button(item, key=f"left_{item}", type=btn_type, use_container_width=True):
                                 st.session_state['selected_left'] = item
                                 st.rerun()
-
                 with c2:
                     st.markdown(f"**[{label_right}]**")
                     connected_values = st.session_state['connected_pairs'].values()
@@ -253,7 +300,7 @@ else:
                     
                     if len(user_pairs) == len(correct_pairs) and user_pairs == correct_pairs:
                         st.balloons()
-                        st.success("🎉 완벽해요! 모든 짝을 맞췄습니다.")
+                        st.success("🎉 완벽해요!")
                     else:
                         st.error("틀린 부분이 있거나 짝을 다 짓지 않았어요.")
                         with st.expander("정답 보기"):
@@ -261,13 +308,11 @@ else:
                                 st.write(f"🔹 **{item}** ➡ {match}")
                         st.info(f"💡 해설: {q_data.get('explanation', '')}")
 
-            # [유형 B] 나머지 문제 (4지선다, OX, 단답형)
             else:
                 with st.form("quiz_form"):
                     user_input = None
+                    options = q_data.get('options', [])
                     if q_type in ["4지선다", "O/X"]:
-                        # 옵션이 없을 경우를 대비해 빈 리스트 처리
-                        options = q_data.get('options', [])
                         user_input = st.radio("정답을 선택하세요:", options)
                     elif q_type == "단답형":
                         user_input = st.text_input("정답을 입력하세요:")
@@ -278,7 +323,6 @@ else:
                         st.session_state['solved'] = True
                         is_correct = False
                         answer = q_data.get('answer', '')
-                        
                         if q_type == "단답형":
                             if str(user_input).strip() == str(answer).strip():
                                 is_correct = True
