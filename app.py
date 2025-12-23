@@ -239,7 +239,7 @@ else:
                          st.error("문제를 받아오지 못했습니다. 다시 시도해주세요.")
 
         # ==========================================
-        # [오류 수정 완료] 후원 및 광고 영역
+        # [수정 완료] 후원 및 광고 영역
         # ==========================================
         st.divider()
         st.write("☕ **개발자 응원하기**")
@@ -247,15 +247,17 @@ else:
         # 1. 커피 후원 버튼
         st.link_button(
             label="☕ 커피 한 잔 후원하기", 
-            url="[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)"
+            # [수정] 대괄호[]와 소괄호()를 모두 지우고 주소만 남김
+            url="https://buymeacoffee.com/ot.helper"
         )
         
         st.write("🚀 **추천 자료**")
         
         # 2. 한국어 교재 버튼 (랜덤)
         coupang_links = [
-            "[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)",
-            "[https://link.coupang.com/a/dhhWHD](https://link.coupang.com/a/dhhWHD)"
+            # [수정] 리스트 안에도 주소만 깔끔하게 넣어야 함
+            "https://link.coupang.com/a/dhejus",
+            "https://link.coupang.com/a/dhhWHD"
         ]
         selected_coupang_url = random.choice(coupang_links)
 
@@ -264,11 +266,11 @@ else:
             url=selected_coupang_url 
         )
 
-        # 3. 읽을 만한 책 추천 버튼 (랜덤 링크로 수정)
-        # 중요: url=에는 주소가 딱 1개만 들어가야 합니다. 2개를 넣으려면 random.choice를 써야 합니다.
+        # 3. 읽을 만한 책 추천 버튼 (랜덤)
         book_recommendations = [
-            "[https://link.coupang.com/a/dhib2N](https://link.coupang.com/a/dhib2N)",
-            "[https://link.coupang.com/a/dhic9A](https://link.coupang.com/a/dhic9A)"
+            # [수정] 여기도 주소만 넣어야 함
+            "https://link.coupang.com/a/dhib2N",
+            "https://link.coupang.com/a/dhic9A"
         ]
         
         st.link_button(
@@ -379,3 +381,4 @@ else:
 
     elif 'quiz' not in st.session_state or st.session_state['quiz'] is None:
         st.info("👈 왼쪽에서 [새 문제 만들기]를 눌러 시작하세요.")
+
