@@ -19,6 +19,7 @@ shared_state = SharedState()
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
+    # ★★★ 여기에 API 키를 다시 넣어주세요! ★★★
     api_key = "여기에_API_KEY_를_넣으세요"
 
 if "ADMIN_ID" in st.secrets:
@@ -83,7 +84,7 @@ def admin_dialog():
             st.rerun()
 
 # ==========================================
-# 3. AI 퀴즈 생성 함수
+# 3. AI 퀴즈 생성 함수 (데이터 파싱 강화!)
 # ==========================================
 def make_quiz(level, category, q_type):
     category_instruction = ""
@@ -116,17 +117,36 @@ def make_quiz(level, category, q_type):
             safety_settings=safety_settings,
             generation_config={"response_mime_type": "application/json"} 
         )
-        data = json.loads(response.text)
+        text = response.text
+        
+        # ★★★ [핵심 수정] JSON 데이터만 발라내기 ★★★
+        # AI가 가끔 ```json ... ``` 같은 마크다운을 붙이거나 잡담을 섞을 때를 대비
+        text = text.replace("```json", "").replace("```JSON", "").replace("```", "")
+        
+        # 중괄호 { } 찾아서 그 안의 내용만 추출 (가장 확실한 방법)
+        start_idx = text.find("{")
+        end_idx = text.rfind("}")
+        
+        if start_idx != -1 and end_idx != -1:
+            text = text[start_idx : end_idx + 1]
+            
+        data = json.loads(text)
+        
+        # 리스트로 묶여서 오면 첫 번째 것만 꺼냄
         if isinstance(data, list):
             data = data[0] if len(data) > 0 else None
         
         if isinstance(data, dict):
+            # O/X 문제 보기는 강제 고정
             if q_type == "O/X":
                 data['options'] = ["O", "X"]
             return data
         else:
             return None
+            
     except Exception as e:
+        # 터미널에 에러 내용을 출력해서 디버깅을 도움
+        print(f"Error making quiz: {e}")
         return None
 
 # ==========================================
@@ -192,17 +212,17 @@ else:
                     status.update(label="출제 완료!", state="complete", expanded=False)
                 else:
                     status.update(label="생성 실패", state="error")
-                    st.error("데이터 형식이 올바르지 않습니다. 다시 시도해주세요.")
+                    st.error("문제를 생성하는 도중 오류가 발생했습니다. 다시 시도해주세요.")
 
         # ==========================================
-        # ★★★ [수익화] 광고 및 후원 (업그레이드) ★★★
+        # ★★★ [수익화] 광고 및 후원 ★★★
         # ==========================================
         st.divider()
         
         # 1. Buy Me a Coffee 후원 버튼
         st.markdown(
             """
-            <a href="https://buymeacoffee.com/ot.helper" target="_blank">
+            <a href="[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)" target="_blank">
                 <button style="background-color:#FFDD00; border:none; color:black; padding:10px 20px; text-align:center; text-decoration:none; display:inline-block; font-size:14px; border-radius:10px; cursor:pointer; width:100%; margin-bottom: 20px; font-weight: bold;">
                     ☕ 커피 한 잔 사주기
                 </button>
@@ -211,36 +231,33 @@ else:
             unsafe_allow_html=True
         )
         
-        # 2. 쿠팡 파트너스 배너 (랜덤 링크 기능 적용)
+        # 2. 쿠팡 파트너스 배너 (랜덤 링크)
         st.caption("📚 추천 한국어 교재")
         
-        # ★ 여러 개의 링크를 넣고 싶다면 이 리스트 안에 콤마(,)로 구분해서 추가하세요.
         ad_links = [
-            "https://link.coupang.com/a/dhejus",
-            # "https://link.coupang.com/a/다른_링크_1",
-            # "https://link.coupang.com/a/다른_링크_2",
+            "[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)",
         ]
         
-        # 리스트에서 랜덤으로 하나를 뽑음
-        selected_link = random.choice(ad_links)
-        banner_img = "https://image7.coupangcdn.com/image/coupang/home/sns/chat_icon.png"
+        if ad_links:
+            selected_link = random.choice(ad_links)
+            banner_img = "[https://image7.coupangcdn.com/image/coupang/home/sns/chat_icon.png](https://image7.coupangcdn.com/image/coupang/home/sns/chat_icon.png)"
 
-        st.markdown(
-            f"""
-            <div style="background-color: #f8f9fa; padding: 10px; border-radius: 10px; border: 1px solid #eee;">
-                <a href="{selected_link}" target="_blank" style="text-decoration: none; color: inherit;">
-                    <img src="{banner_img}" width="100%" style="border-radius:5px; margin-bottom: 5px;">
-                    <div style="text-align:center; font-weight:bold; font-size:14px; margin-bottom:5px;">
-                        🚀 교재 최저가 보러가기
+            st.markdown(
+                f"""
+                <div style="background-color: #f8f9fa; padding: 10px; border-radius: 10px; border: 1px solid #eee;">
+                    <a href="{selected_link}" target="_blank" style="text-decoration: none; color: inherit;">
+                        <img src="{banner_img}" width="100%" style="border-radius:5px; margin-bottom: 5px;">
+                        <div style="text-align:center; font-weight:bold; font-size:14px; margin-bottom:5px;">
+                            🚀 교재 최저가 보러가기
+                        </div>
+                    </a>
+                    <div style="font-size: 10px; color: #888; text-align: center; line-height: 1.2;">
+                        "이 포스팅은 쿠팡 파트너스 활동의 일환으로,<br>이에 따른 일정액의 수수료를 제공받습니다."
                     </div>
-                </a>
-                <div style="font-size: 10px; color: #888; text-align: center; line-height: 1.2;">
-                    "이 포스팅은 쿠팡 파트너스 활동의 일환으로,<br>이에 따른 일정액의 수수료를 제공받습니다."
                 </div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+                """,
+                unsafe_allow_html=True
+            )
 
     # 문제 화면 표시
     if 'quiz' in st.session_state and st.session_state['quiz']:
