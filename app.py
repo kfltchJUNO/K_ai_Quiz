@@ -91,14 +91,14 @@ def admin_dialog():
 # ==========================================
 def make_quiz(level, category, q_type):
     
-    # [수정 1] 레벨에 따른 난이도 및 금지어 설정
+    # [난이도 및 단어 선택 지시사항 강화]
     tone_instruction = ""
     if level in ["1급", "2급"]:
         tone_instruction = """
-        [중요 지시사항]
-        1. 문제 지문(question)에 '의미하다', '해당하다' 같은 어려운 단어를 절대 쓰지 마세요.
-        2. 대신 '뜻', '맞는 것' 처럼 아주 쉬운 초급 단어를 사용하세요.
-        3. 문장은 최대한 짧고 간결하게 만드세요.
+        [매우 중요 - 어휘 수준 조절]
+        1. 문제 지문(question)에 '의미하다', '해당하다', '적절하다' 같은 한자어 서술어를 쓰지 마세요.
+        2. 대신 '뜻', '맞는 것', '고르세요' 처럼 초급 학습자가 아는 쉬운 단어를 사용하세요.
+        3. 문장은 복문 대신 단문을 사용하여 최대한 짧고 간결하게 만드세요.
         """
     
     category_instruction = ""
@@ -239,17 +239,24 @@ else:
                          st.error("문제를 받아오지 못했습니다. 다시 시도해주세요.")
 
         # ==========================================
-        # [수정 2] 후원 및 광고 (st.link_button 사용)
+        # [확실한 수정] 후원 및 광고 (st.link_button 사용)
+        # HTML 태그를 모두 제거하고 스트림릿 전용 버튼만 사용합니다.
         # ==========================================
         st.divider()
         st.write("☕ **개발자 응원하기**")
         
-        # 스트림릿 공식 링크 버튼 사용 (가장 안전하고 확실한 방법)
-        st.link_button("☕ 커피 한 잔 후원하기", "[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)")
+        # 1. 커피 후원 버튼 (이 코드는 무조건 외부 새 탭으로 열립니다)
+        st.link_button(
+            label="☕ 커피 한 잔 후원하기", 
+            url="[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)"
+        )
         
         st.write("🚀 **추천 교재**")
-        # 쿠팡 파트너스 등의 링크
-        st.link_button("📚 한국어 책 구경가기", "[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)")
+        # 2. 쿠팡 링크 버튼
+        st.link_button(
+            label="📚 한국어 책 구경가기", 
+            url="[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)"
+        )
         
         st.caption("이 포스팅은 쿠팡 파트너스 활동의 일환으로,\n이에 따른 일정액의 수수료를 제공받습니다.")
 
@@ -265,9 +272,9 @@ else:
 
             if q_type == "연결하기":
                 if s_category == "어휘":
-                    label_left, label_right = "단어", "의미"
+                    label_left, label_right = "단어", "뜻" # 쉬운 단어로 변경
                 else:
-                    label_left, label_right = "문법 표현", "쓰임/설명"
+                    label_left, label_right = "문법 표현", "설명"
 
                 st.write(f"👈 **왼쪽 [{label_left}]**을(를) 먼저 누르고, 👉 **오른쪽 [{label_right}]**을(를) 눌러 짝을 지어주세요!")
                 
