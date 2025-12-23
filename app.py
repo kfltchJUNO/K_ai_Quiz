@@ -16,16 +16,20 @@ class SharedState:
 
 shared_state = SharedState()
 
+# ★★★ [수정됨] 이제 코드에 키를 직접 적는 칸은 아예 삭제했습니다! ★★★
+# 로컬에서는 .streamlit/secrets.toml 파일에서 가져오고,
+# 배포 환경에서는 Streamlit Cloud Secrets에서 가져옵니다.
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
-    # ★★★★★ [중요] 여기에 API 키를 꼭 다시 넣어주세요!! ★★★★★
-    api_key = "AIzaSyAQCS9T4tnFgvQUOmJUBjDTnf0MKnfajsk"
+    st.error("API 키를 찾을 수 없습니다. .streamlit/secrets.toml 파일을 확인하거나 배포 설정을 확인해주세요.")
+    st.stop() # 키가 없으면 아예 실행 중지
 
 if "ADMIN_ID" in st.secrets:
     ADMIN_ID = st.secrets["ADMIN_ID"]
     ADMIN_PW = st.secrets["ADMIN_PW"]
 else:
+    # 관리자 정보도 secrets가 없으면 기본값으로 (이건 공개되어도 덜 위험하지만 secrets 권장)
     ADMIN_ID = "오준호"
     ADMIN_PW = "qlalf1"
 
@@ -84,7 +88,7 @@ def admin_dialog():
             st.rerun()
 
 # ==========================================
-# 3. AI 퀴즈 생성 함수 (에러 상세 출력 기능 추가)
+# 3. AI 퀴즈 생성 함수
 # ==========================================
 def make_quiz(level, category, q_type):
     category_instruction = ""
@@ -118,9 +122,8 @@ def make_quiz(level, category, q_type):
             generation_config={"response_mime_type": "application/json"} 
         )
         text = response.text
-        
-        # JSON 파싱 강화
         text = text.replace("```json", "").replace("```JSON", "").replace("```", "")
+        
         start_idx = text.find("{")
         end_idx = text.rfind("}")
         
@@ -140,8 +143,7 @@ def make_quiz(level, category, q_type):
             return None
             
     except Exception as e:
-        # ★ 에러 내용을 화면에 출력하여 원인 파악 (중요)
-        st.error(f"오류 발생 내용: {e}")
+        st.error(f"오류 발생: {e}")
         return None
 
 # ==========================================
@@ -207,16 +209,14 @@ else:
                     status.update(label="출제 완료!", state="complete", expanded=False)
                 else:
                     status.update(label="생성 실패", state="error")
-                    # make_quiz 안에서 에러 메시지를 이미 출력했으므로 여기선 간단히
                     if not quiz_data:
-                         st.error("문제를 받아오지 못했습니다. 위의 오류 메시지를 확인해주세요.")
+                         st.error("문제를 받아오지 못했습니다. 오류 메시지를 확인해주세요.")
 
         # ==========================================
-        # ★★★ [수익화] 광고 및 후원 (버튼으로 수정됨) ★★★
+        # ★★★ [수익화] 광고 및 후원 ★★★
         # ==========================================
         st.divider()
         
-        # 1. Buy Me a Coffee 후원 버튼
         st.markdown(
             """
             <a href="[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)" target="_blank">
@@ -228,15 +228,10 @@ else:
             unsafe_allow_html=True
         )
         
-        # 2. 쿠팡 파트너스 (버튼 버전)
-        ad_links = [
-            "[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)",
-        ]
+        ad_links = ["[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)"]
         
         if ad_links:
             selected_link = random.choice(ad_links)
-            
-            # 빨간색(쿠팡 로켓 색상) 버튼으로 변경
             st.markdown(
                 f"""
                 <a href="{selected_link}" target="_blank">
