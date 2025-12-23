@@ -20,7 +20,6 @@ shared_state = SharedState()
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
-    # 로컬 테스트 등을 위한 예외 처리
     st.error("🚨 API 키를 찾을 수 없습니다!")
     st.info("Streamlit Secrets에 GEMINI_API_KEY를 설정해주세요.")
     st.stop()
@@ -91,6 +90,17 @@ def admin_dialog():
 # 3. AI 퀴즈 생성 함수
 # ==========================================
 def make_quiz(level, category, q_type):
+    
+    # [수정 1] 레벨에 따른 난이도 및 금지어 설정
+    tone_instruction = ""
+    if level in ["1급", "2급"]:
+        tone_instruction = """
+        [중요 지시사항]
+        1. 문제 지문(question)에 '의미하다', '해당하다' 같은 어려운 단어를 절대 쓰지 마세요.
+        2. 대신 '뜻', '맞는 것' 처럼 아주 쉬운 초급 단어를 사용하세요.
+        3. 문장은 최대한 짧고 간결하게 만드세요.
+        """
+    
     category_instruction = ""
     if category == "문법":
         category_instruction = "단어의 뜻을 묻지 말고, 문법 요소(조사, 어미, 표현 등)와 그 쓰임/기능을 연결하거나 올바른 예문을 찾는 문제 위주로 출제하세요."
@@ -111,6 +121,9 @@ def make_quiz(level, category, q_type):
     1. 등급: 한국어표준교육과정 {level}
     2. 영역: {category} ({category_instruction})
     3. 유형: {q_type}
+    
+    {tone_instruction}
+
     응답은 반드시 아래 JSON 스키마를 따르세요:
     {json_structure}
     """
@@ -226,40 +239,19 @@ else:
                          st.error("문제를 받아오지 못했습니다. 다시 시도해주세요.")
 
         # ==========================================
-        # 광고 및 후원 (수정 완료!)
+        # [수정 2] 후원 및 광고 (st.link_button 사용)
         # ==========================================
         st.divider()
+        st.write("☕ **개발자 응원하기**")
         
-        # 1. Buy Me a Coffee 링크 (순수 URL 적용)
-        st.markdown(
-            """
-            <a href="[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)" target="_blank" style="text-decoration:none;">
-                <div style="background-color:#FFDD00; color:black; padding:10px 20px; text-align:center; border-radius:10px; font-weight:bold; width:100%; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor:pointer;">
-                    ☕ 커피 한 잔 사주기
-                </div>
-            </a>
-            """,
-            unsafe_allow_html=True
-        )
+        # 스트림릿 공식 링크 버튼 사용 (가장 안전하고 확실한 방법)
+        st.link_button("☕ 커피 한 잔 후원하기", "[https://buymeacoffee.com/ot.helper](https://buymeacoffee.com/ot.helper)")
         
-        # 2. 쿠팡 링크 (순수 URL 적용)
-        ad_links = ["[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)"] # [ ] 와 ( ) 제거함
+        st.write("🚀 **추천 교재**")
+        # 쿠팡 파트너스 등의 링크
+        st.link_button("📚 한국어 책 구경가기", "[https://link.coupang.com/a/dhejus](https://link.coupang.com/a/dhejus)")
         
-        if ad_links:
-            selected_link = random.choice(ad_links)
-            st.markdown(
-                f"""
-                <a href="{selected_link}" target="_blank" style="text-decoration:none;">
-                    <div style="background-color:#E33A3D; color:white; padding:10px 20px; text-align:center; border-radius:10px; font-weight:bold; width:100%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor:pointer;">
-                        🚀 한국어 책 구경하기
-                    </div>
-                </a>
-                <div style="font-size: 10px; color: #888; text-align: center; margin-top: 5px;">
-                    "이 포스팅은 쿠팡 파트너스 활동의 일환으로,<br>이에 따른 일정액의 수수료를 제공받습니다."
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+        st.caption("이 포스팅은 쿠팡 파트너스 활동의 일환으로,\n이에 따른 일정액의 수수료를 제공받습니다.")
 
     # 문제 화면 표시
     if 'quiz' in st.session_state and st.session_state['quiz']:
